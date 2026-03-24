@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Package, Plus, Edit2, Trash2, Play, RefreshCw, AlertCircle } from 'lucide-react'
 import { inventoryAPI, scheduleAPI } from '../services/api'
+import { useToast } from '../components/Toast'
 
 function Inventory() {
   const [inventory, setInventory] = useState([])
@@ -8,6 +9,7 @@ function Inventory() {
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [userRole, setUserRole] = useState(null)
+  const toast = useToast()
   const [formData, setFormData] = useState({
     shopId: '',
     riceStock: 0,
@@ -50,8 +52,9 @@ function Inventory() {
       setEditingItem(null)
       setFormData({ shopId: '', riceStock: 0, sugarStock: 0, wheatStock: 0, oilStock: 0, toorDalStock: 0 })
       fetchInventory()
+      toast.success('Inventory updated successfully')
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to update inventory')
+      toast.error(error.response?.data?.error || 'Failed to update inventory')
     }
   }
 
@@ -81,10 +84,10 @@ function Inventory() {
     try {
       const shopId = localStorage.getItem('shopId')
       await inventoryAPI.resetInventory(shopId)
-      alert('Inventory reset to zero!')
+      toast.success('Inventory reset to zero!')
       fetchInventory()
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to reset inventory')
+      toast.error(error.response?.data?.error || 'Failed to reset inventory')
     }
   }
 
@@ -106,13 +109,13 @@ function Inventory() {
       const response = await scheduleAPI.runSchedule(shopId, delayDays)
       
       if (response.data.success) {
-        alert(`Schedule Complete!\n\nScheduled: ${response.data.scheduledCards} cards\nPending: ${response.data.pendingCards} cards\n\nCollection Date: ${collectionDate.toDateString()}\nTotal members served: ${response.data.totalAllocatedMembers}`)
+        toast.success(`Scheduled: ${response.data.scheduledCards} cards, Pending: ${response.data.pendingCards} cards`)
       } else {
-        alert(`Schedule failed: ${response.data.reason}`)
+        toast.error(`Schedule failed: ${response.data.reason}`)
       }
       fetchInventory()
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to run schedule')
+      toast.error(error.response?.data?.error || 'Failed to run schedule')
     }
   }
 
@@ -125,10 +128,10 @@ function Inventory() {
       const shopId = localStorage.getItem('shopId')
       const response = await scheduleAPI.processMissed(shopId)
       
-      alert(`Processed Missed Users!\n\nMarked as MISSED: ${response.data.markedAsMissed}\nRescheduled: ${response.data.rescheduled}\nStill Pending: ${response.data.stillPending}\n\nNew Collection Date: ${response.data.newCollectionDate}`)
+      toast.success(`Marked: ${response.data.markedAsMissed}, Rescheduled: ${response.data.rescheduled}`)
       fetchInventory()
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to process missed users')
+      toast.error(error.response?.data?.error || 'Failed to process missed users')
     }
   }
 

@@ -14,7 +14,7 @@ const sendOTP = async (phone) => {
     }
   });
 
-  // TODO: SMS/WhatsApp API
+  // SMS notification simulated on console
   console.log(`OTP for ${phone}: ${otp} (expires: ${expiresAt})`);
 
   return { success: true, message: 'OTP sent to phone' };

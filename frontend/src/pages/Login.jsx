@@ -130,6 +130,7 @@ function Login({ onLogin }) {
                   <Mail className="h-5 w-5 text-[#64748B]" />
                 </div>
                 <input
+                  data-testid="login-email-input"
                   type="email"
                   value={email}
                   onChange={handleEmailChange}
@@ -150,6 +151,7 @@ function Login({ onLogin }) {
                   <Lock className="h-5 w-5 text-[#64748B]" />
                 </div>
                 <input
+                  data-testid="login-password-input"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -158,6 +160,7 @@ function Login({ onLogin }) {
                   required
                 />
                 <button
+                  data-testid="login-toggle-password"
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 pr-4 flex items-center"
@@ -182,6 +185,7 @@ function Login({ onLogin }) {
                     <Building2 className="h-5 w-5 text-[#64748B]" />
                   </div>
                   <input
+                    data-testid="login-shopid-input"
                     type="text"
                     value={shopId}
                     onChange={(e) => setShopId(e.target.value.toUpperCase())}
@@ -194,6 +198,7 @@ function Login({ onLogin }) {
             )}
 
             <button
+              data-testid="login-submit-button"
               type="submit"
               disabled={loading}
               className="w-full py-4 bg-gradient-to-r from-[#1E40AF] to-[#EA580C] hover:from-[#1E40AF] hover:to-[#EA580C] text-white font-semibold rounded-full transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"

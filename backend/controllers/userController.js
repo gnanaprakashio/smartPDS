@@ -247,17 +247,27 @@ const uploadUsersCSV = async (req, res) => {
         .on('error', reject);
     });
 
-    // Get shopId from request body (staff) or JWT token
-    console.log('CSV Upload - req.body:', req.body);
-    console.log('CSV Upload - req.user:', req.user);
-    
-    const shopId = req.body.shopId || req.user.shopId;
-    
-    console.log('CSV Upload - shopId:', shopId);
-    
-    if (!shopId) {
-      return res.status(400).json({ error: 'Shop ID is required for CSV upload. Please login again and enter your Shop ID.' });
+    // Role-based shopId handling:
+    // - PDS Officer: Can upload CSV for any shop (must specify shopId in request body)
+    // - Staff: Can only upload CSV for their own shop (use JWT shopId)
+    let shopId;
+    if (req.user.role === 'PDS_OFFICER' || req.user.role === 'ADMIN') {
+      // PDS Officer must provide shopId in request body
+      shopId = req.body.shopId;
+      if (!shopId) {
+        return res.status(400).json({ error: 'Shop ID is required for CSV upload. Please enter a shop name.' });
+      }
+      // Trim and uppercase
+      shopId = shopId.trim().toUpperCase();
+    } else {
+      // Staff can only upload for their own shop
+      shopId = req.user.shopId;
+      if (!shopId) {
+        return res.status(400).json({ error: 'Your shop is not assigned. Please contact administrator.' });
+      }
     }
+
+    console.log('CSV Upload - Role:', req.user.role, 'ShopId:', shopId);
 
     // Process each row
     for (const row of results) {

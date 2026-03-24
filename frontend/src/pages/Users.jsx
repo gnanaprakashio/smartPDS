@@ -18,6 +18,8 @@ function UsersPage() {
   const [shopId, setShopId] = useState('')
   const [shops, setShops] = useState([])
   const [selectedShop, setSelectedShop] = useState('')
+  const [showCSVModal, setShowCSVModal] = useState(false)
+  const [csvShopId, setCsvShopId] = useState('')
   const [statusFilter, setStatusFilter] = useState('')  // For filtering by status
   const [cardTypeFilter, setCardTypeFilter] = useState('')  // For filtering by card type
   const [slotTimingFilter, setSlotTimingFilter] = useState('')  // For filtering by slot timing
@@ -200,8 +202,10 @@ function UsersPage() {
 
     const formData = new FormData()
     formData.append('file', file)
-    // Add shopId to formData (trim whitespace)
-    const currentShopId = localStorage.getItem('shopId')
+    
+    // For PDS Officer, use the selected shop from CSV modal
+    // For Staff, use their assigned shop
+    const currentShopId = userRole === 'PDS_OFFICER' ? csvShopId : localStorage.getItem('shopId')
     if (currentShopId) {
       formData.append('shopId', currentShopId.trim())
     }
@@ -221,6 +225,8 @@ function UsersPage() {
       // Refresh users list and card counts
       fetchUsers()
       fetchCardCounts()
+      setShowCSVModal(false)
+      setCsvShopId('')
     } catch (error) {
       console.error('CSV upload error:', error)
       alert(error.response?.data?.error || 'Failed to upload CSV')
@@ -356,23 +362,16 @@ function UsersPage() {
               <span>Add User</span>
             </button>
           )}
-          {/* CSV Upload - Only for PDS Officer and Staff */}
-          {(userRole === 'PDS_OFFICER' || userRole === 'STAFF') && (
+          {/* CSV Upload - Only for PDS Officer */}
+          {userRole === 'PDS_OFFICER' && (
             <>
               <button
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => setShowCSVModal(true)}
                 className="btn-secondary"
               >
                 <Upload size={20} />
                 <span>Upload CSV</span>
               </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv"
-                onChange={handleUploadCSV}
-                className="hidden"
-              />
             </>
           )}
           {/* Reschedule - Only for Staff when MISSED status is selected */}
@@ -986,6 +985,56 @@ function UsersPage() {
               >
                 <Check size={20} className="mr-2" />
                 Confirm Collect
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CSV Upload Modal - Only for PDS Officer */}
+      {showCSVModal && (
+        <div className="modal-overlay">
+          <div className="modal-content p-6">
+            <h2 className="text-xl font-bold text-text-primary mb-6">Upload CSV for Shop</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Shop Name</label>
+                <input
+                  type="text"
+                  value={csvShopId}
+                  onChange={(e) => setCsvShopId(e.target.value.toUpperCase().trim())}
+                  placeholder="Enter new or existing shop name (e.g., SHOP014)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Enter a new shop name to create users for a new shop, or an existing shop name
+                </p>
+              </div>
+
+              {csvShopId && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Select CSV File</label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleUploadCSV}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                  <p className="mt-2 text-xs text-gray-500">
+                    CSV should contain: card_number, name, phone_number, card_type, members, area, reputation
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex space-x-3 mt-6">
+              <button
+                onClick={() => { setShowCSVModal(false); setCsvShopId('') }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
               </button>
             </div>
           </div>

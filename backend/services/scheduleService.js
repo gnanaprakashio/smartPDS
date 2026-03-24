@@ -177,13 +177,16 @@ const autoSchedule = async (shopIdOverride = null, delayDays = null) => {
     // Priority order: AAY > PHH > NPHH > NPHH_S (TNPDS standards)
     const basePriorityMap = { 'AAY': 1, 'PHH': 2, 'NPHH': 3, 'NPHH_S': 4 };
     
-    // Sort all users by priority (card type first, then reputation)
+    // Sort all users by priority (card type first, then reputation, then ration card number)
     const sortedUsers = [...allUsers].sort((a, b) => {
       const priorityA = basePriorityMap[a.cardType] || 3;
       const priorityB = basePriorityMap[b.cardType] || 3;
       if (priorityA !== priorityB) return priorityA - priorityB;
-      // If same card type, higher reputation first
-      return (b.reputationScore || 50) - (a.reputationScore || 50);
+      // Same card type → higher reputation first
+      const repDiff = (b.reputationScore || 50) - (a.reputationScore || 50);
+      if (repDiff !== 0) return repDiff;
+      // Same reputation → lower ration card number first (alphabetical)
+      return (a.rationCardNumber || '').localeCompare(b.rationCardNumber || '');
     });
 
     // Card-based selection: take top X cards based on limiting factor

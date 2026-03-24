@@ -9,11 +9,8 @@ import {
   LogOut,
   Menu,
   X,
-  Shield,
+  Store,
   User,
-  FileText,
-  Settings,
-  ClipboardList,
   Send,
   CheckSquare
 } from 'lucide-react'
@@ -39,16 +36,11 @@ function AdminLayout({ onLogout, userRole }) {
     sections.push({
       section: 'MANAGEMENT',
       items: [
+        { name: 'Inventory', path: '/inventory', icon: Package },
         { name: 'Users', path: '/users', icon: Users },
+        { name: 'Slots', path: '/slots', icon: Calendar },
       ]
     })
-
-    // Add Inventory for PDS Officer and Staff
-    if (role === 'PDS_OFFICER' || role === 'STAFF') {
-      sections[1].items.push({ name: 'Inventory', path: '/inventory', icon: Package })
-    }
-
-    sections[1].items.push({ name: 'Slots', path: '/slots', icon: Calendar })
 
     // REPORTS Section
     sections.push({
@@ -58,7 +50,7 @@ function AdminLayout({ onLogout, userRole }) {
       ]
     })
 
-    // REPUTATION MANAGEMENT Section
+    // REPUTATION Section
     sections.push({
       section: 'REPUTATION',
       items: []
@@ -66,12 +58,12 @@ function AdminLayout({ onLogout, userRole }) {
 
     // Staff: Send Request to PDS Officer
     if (role === 'STAFF') {
-      sections[2].items.push({ name: 'Staff Report', path: '/staff-requests', icon: Send })
+      sections[3].items.push({ name: 'Staff Report', path: '/staff-requests', icon: Send })
     }
 
     // PDS Officer: View & Approve Requests
     if (role === 'PDS_OFFICER') {
-      sections[2].items.push({ name: 'Officer Panel', path: '/officer-requests', icon: CheckSquare })
+      sections[3].items.push({ name: 'Officer Panel', path: '/officer-requests', icon: CheckSquare })
     }
 
     return sections
@@ -93,7 +85,7 @@ function AdminLayout({ onLogout, userRole }) {
             </button>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-md">
-                <Shield className="w-5 h-5 text-white" />
+                <Store className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-white tracking-tight">SPDS</h1>
@@ -129,7 +121,7 @@ function AdminLayout({ onLogout, userRole }) {
           sidebarCollapsed ? 'w-20' : 'w-64'
         } bg-gradient-to-b from-slate-800 via-slate-900 to-slate-800 transform transition-all duration-300 z-40 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}
+        } lg:translate-x-0 overflow-x-hidden`}
       >
         <div className="flex flex-col h-full">
           <nav className="flex-1 p-4 space-y-6 overflow-y-auto">

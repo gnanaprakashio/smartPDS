@@ -108,7 +108,7 @@ function Dashboard() {
       {/* Page Header */}
       <div className="page-header">
         <h1 className="page-title">Dashboard</h1>
-        <p className="page-subtitle">Overview of SPDS - Smart PDS Distribution System</p>
+        <p className="page-subtitle">Overview of SPDS - Smart Public Distribution System</p>
       </div>
 
       {/* Today's Summary */}
