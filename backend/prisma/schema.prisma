@@ -1,0 +1,233 @@
+// SmartQueue AI Ration System - India PDS Schema ✅
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String           @id @default(cuid())
+  rationCardNumber  String           @unique
+  name              String
+  phone             String           @unique
+  members           Int              @default(1)  // Number of family members on card
+  cardType          CardType
+  reputationScore   Float            @default(100.0)
+  slotNumber        Int?
+  timeSlot          String?
+  scheduleDate      DateTime?
+  otp               String?
+  otpExpiry         DateTime?
+  collected         Boolean          @default(false)
+  status            UserStatus       @default(PENDING)
+  shopId            String           // Linked to specific ration shop
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  slotAssignments   SlotAssignment[]
+  otpVerifications  OtpVerification[]
+  reputationLogs    ReputationLog[]
+  fraudLogs         FraudLog[]
+
+  @@map("users")
+  @@index([rationCardNumber])
+  @@index([phone])
+  @@index([shopId])
+}
+
+// Admin/Staff for PDS Officers
+model Admin {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      AdminRole @default(STAFF)
+  shopId    String?  // Staff linked to specific shop (null for PDS Officer who manages all)
+  createdAt DateTime @default(now())
+
+  @@map("admins")
+  @@index([shopId])
+}
+
+enum AdminRole {
+  PDS_OFFICER  // Can manage stock, users, view all
+  STAFF        // Can only add users
+}
+
+model Inventory {
+  id           String @id @default(cuid())
+  shopId       String
+  riceStock    Float  @default(0)
+  sugarStock   Float  @default(0)
+  wheatStock   Float  @default(0)
+  oilStock     Float  @default(0)
+  toorDalStock Float  @default(0)  // Toor Dal (pulses) - TNPDS allocation
+  updatedAt    DateTime @updatedAt
+
+  @@unique([shopId])
+  @@map("inventory")
+  @@index([shopId])
+}
+
+model Slot {
+  id        String          @id @default(cuid())
+  slotDate  DateTime
+  startTime String          // HH:MM
+  endTime   String          // HH:MM
+  maxUsers  Int
+  shopId    String          // Linked to specific ration shop
+  createdAt DateTime        @default(now())
+
+  assignments SlotAssignment[]
+
+  @@map("slots")
+  @@index([slotDate])
+  @@index([shopId])
+}
+
+model SlotAssignment {
+  id     String @id @default(cuid())
+  userId String
+  slotId String
+  status SlotStatus @default(SCHEDULED)
+
+  user  User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slot  Slot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@map("slot_assignments")
+  @@unique([userId, slotId])
+  @@index([userId])
+  @@index([slotId])
+}
+
+model OtpVerification {
+  id        String   @id @default(cuid())
+  userId    String
+  otp       String
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("otp_verifications")
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model ReputationLog {
+  id           String @id @default(cuid())
+  userId       String
+  changeReason String
+  scoreChange  Float
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("reputation_logs")
+  @@index([userId])
+}
+
+model FraudLog {
+  id        String       @id @default(cuid())
+  userId    String
+  reason    String
+  severity  FraudSeverity @default(MEDIUM)
+  createdAt DateTime      @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminAction AdminAction?
+
+  @@map("fraud_logs")
+  @@index([userId])
+}
+
+model AdminAction {
+  id         String   @id @default(cuid())
+  fraudLogId String   @unique
+  adminId    String
+  action     String
+  createdAt  DateTime @default(now())
+
+  fraudLog FraudLog @relation(fields: [fraudLogId], references: [id], onDelete: Cascade)
+
+  @@map("admin_actions")
+}
+
+enum FraudSeverity {
+  LOW
+  MEDIUM  
+  HIGH
+}
+
+enum CardType {
+  AAY
+  PHH
+  NPHH
+  NPHH_S
+}
+
+enum UserStatus {
+  PENDING
+  SCHEDULED
+  COMPLETED
+  MISSED
+}
+
+enum SlotStatus {
+  SCHEDULED
+  COMPLETED
+  MISSED
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  read      Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  @@map("notifications")
+  @@index([read])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  ALERT
+  FRAUD
+  SUCCESS
+}
+
+model ReputationResetRequest {
+  id              String                   @id @default(cuid())
+  userId          String
+  userName        String
+  rationCardNumber String
+  shopId          String
+  staffId         String
+  staffName       String
+  reason          String
+  status          ResetRequestStatus       @default(PENDING)
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  reviewedReason  String?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  @@map("reputation_reset_requests")
+  @@index([shopId])
+  @@index([status])
+}
+
+enum ResetRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
