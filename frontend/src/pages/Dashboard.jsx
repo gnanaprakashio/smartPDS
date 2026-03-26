@@ -25,6 +25,8 @@ function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
+      setStats(prev => ({ ...prev, loading: true }))
+      
       const [usersRes, inventoryRes, slotsRes] = await Promise.allSettled([
         usersAPI.getUsers(),
         inventoryAPI.getInventory(),
@@ -262,7 +264,7 @@ function Dashboard() {
           <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
             <div className="flex items-center gap-3">
               <Sparkles className="w-5 h-5 text-slate-400" />
-              <span className="text-slate-600">AI Engine</span>
+              <span className="text-slate-600">Engine</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-success-500 rounded-full animate-pulse"></div>

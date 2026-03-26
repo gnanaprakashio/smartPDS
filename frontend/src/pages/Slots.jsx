@@ -13,6 +13,7 @@ function Slots() {
     endTime: '11:00',
     maxUsers: 40
   })
+  const [formLoading, setFormLoading] = useState(false)
 
   // Auto-calculate end time when start time changes (2 hour duration)
   const handleStartTimeChange = (e) => {
@@ -53,13 +54,17 @@ function Slots() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setFormLoading(true)
     try {
       await slotsAPI.createSlot(formData)
       setShowModal(false)
       setFormData({ slotDate: '', startTime: '09:00', endTime: '11:00', maxUsers: 40 })
       fetchSlots()
+      alert('Slot created successfully!')
     } catch (error) {
       alert(error.response?.data?.error || 'Failed to create slot')
+    } finally {
+      setFormLoading(false)
     }
   }
 
@@ -219,9 +224,17 @@ function Slots() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  disabled={formLoading}
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Create
+                  {formLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Creating...
+                    </>
+                  ) : (
+                    'Create'
+                  )}
                 </button>
               </div>
             </form>

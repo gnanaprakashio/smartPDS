@@ -83,6 +83,9 @@ function Analytics() {
   }
 
   const handleDeleteNotification = async (id) => {
+    const confirmed = window.confirm('Are you sure you want to delete this notification?')
+    if (!confirmed) return
+  
     try {
       await notificationsAPI.deleteNotification(id)
       const deleted = notifications.find(n => n.id === id)
@@ -92,6 +95,7 @@ function Analytics() {
       }
     } catch (error) {
       console.error('Error deleting notification:', error)
+      alert('Failed to delete notification')
     }
   }
 

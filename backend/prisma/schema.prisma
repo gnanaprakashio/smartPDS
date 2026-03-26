@@ -24,6 +24,7 @@ model User {
   collected         Boolean          @default(false)
   status            UserStatus       @default(PENDING)
   shopId            String           // Linked to specific ration shop
+  reservedItems    Json?            // Reserved stock items for this user
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
@@ -65,6 +66,11 @@ model Inventory {
   wheatStock   Float  @default(0)
   oilStock     Float  @default(0)
   toorDalStock Float  @default(0)  // Toor Dal (pulses) - TNPDS allocation
+  reservedRice    Float  @default(0)
+  reservedWheat   Float  @default(0)
+  reservedSugar   Float  @default(0)
+  reservedOil     Float  @default(0)
+  reservedToorDal Float  @default(0)
   updatedAt    DateTime @updatedAt
 
   @@unique([shopId])

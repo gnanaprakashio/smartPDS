@@ -18,6 +18,7 @@ function Inventory() {
     oilStock: 0,
     toorDalStock: 0
   })
+  const [formLoading, setFormLoading] = useState(false)
 
   useEffect(() => {
     fetchInventory()
@@ -46,6 +47,7 @@ function Inventory() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setFormLoading(true)
     try {
       await inventoryAPI.updateInventory(formData)
       setShowModal(false)
@@ -55,6 +57,8 @@ function Inventory() {
       toast.success('Inventory updated successfully')
     } catch (error) {
       toast.error(error.response?.data?.error || 'Failed to update inventory')
+    } finally {
+      setFormLoading(false)
     }
   }
 
@@ -352,9 +356,17 @@ function Inventory() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  disabled={formLoading}
+                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  {editingItem ? 'Update' : 'Add'}
+                  {formLoading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      {editingItem ? 'Updating...' : 'Adding...'}
+                    </>
+                  ) : (
+                    editingItem ? 'Update' : 'Add'
+                  )}
                 </button>
               </div>
             </form>

@@ -26,9 +26,31 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle 401 Unauthorized
     if (error.response?.status === 401) {
+      // Clear all auth data
       localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('shopId');
+      // Force redirect to login
       window.location.href = '/login';
+    }
+    // Handle network errors
+    else if (!error.response) {
+      // Network error (no internet connection, server down, etc.)
+      console.error('Network Error:', error.message);
+      // You could show a global toast notification here
+      if (typeof window !== 'undefined') {
+        window.showNetworkError?.('Network connection error. Please check your internet connection.');
+      }
+    }
+    // Handle 500 Server Error
+    else if (error.response?.status >= 500) {
+      console.error('Server Error:', error.response.status);
+      if (typeof window !== 'undefined') {
+        window.showServerError?.('Server error. Please try again later.');
+      }
     }
     return Promise.reject(error);
   }
@@ -125,8 +147,8 @@ export const rationsAPI = {
 };
 
 export const verifyAPI = {
-  verify: (data) => api.post('/api/verify', data),
-  notifyUsers: () => api.post('/api/verify/notify')
+  verify: (data) => api.post('/verify', data),
+  notifyUsers: () => api.post('/verify/notify')
 };
 
 export default api;

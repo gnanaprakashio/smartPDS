@@ -12,7 +12,8 @@ import {
   Store,
   User,
   Send,
-  CheckSquare
+  CheckSquare,
+  ShieldCheck
 } from 'lucide-react'
 
 function AdminLayout({ onLogout, userRole }) {
@@ -39,6 +40,8 @@ function AdminLayout({ onLogout, userRole }) {
         { name: 'Inventory', path: '/inventory', icon: Package },
         { name: 'Users', path: '/users', icon: Users },
         { name: 'Slots', path: '/slots', icon: Calendar },
+        // Verify hidden for staff and PDS officer
+        ...(role !== 'STAFF' && role !== 'PDS_OFFICER' ? [{ name: 'Verify', path: '/verify', icon: ShieldCheck }] : []),
       ]
     })
 
@@ -79,7 +82,9 @@ function AdminLayout({ onLogout, userRole }) {
           <div className="flex items-center space-x-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="lg:hidden p-2 rounded-xl hover:bg-slate-700 transition-colors"
+              className="p-2 rounded-xl hover:bg-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+              aria-label="Toggle sidebar menu"
+              aria-expanded={sidebarOpen}
             >
               {sidebarOpen ? <X size={24} className="text-white" /> : <Menu size={24} className="text-white" />}
             </button>

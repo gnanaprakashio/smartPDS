@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Users as UsersIcon, Plus, Search, Upload, Check, X, Clock, Package, Trash2, Filter, RefreshCw, CreditCard, Users, Calendar, Phone, MapPin, ChevronRight, User, Wheat, Scale } from 'lucide-react'
 import { usersAPI, scheduleAPI } from '../services/api'
+import Modal from '../components/Modal'
 
 function UsersPage() {
   const [users, setUsers] = useState([])
@@ -70,6 +71,8 @@ function UsersPage() {
     cardType: 'PHH',
     shopId: ''
   })
+  const [formLoading, setFormLoading] = useState(false)
+  const [formError, setFormError] = useState('')
 
   useEffect(() => {
     fetchUsers()
@@ -176,14 +179,21 @@ function UsersPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setFormError('')
+    setFormLoading(true)
+    
     try {
       const dataWithShop = { ...formData, shopId: shopId || formData.shopId }
       await usersAPI.register(dataWithShop)
       setShowModal(false)
       setFormData({ rationCardNumber: '', name: '', phone: '', members: 1, cardType: 'PHH', shopId: shopId || '' })
       fetchUsers()
+      // Show success message
+      alert('User registered successfully!')
     } catch (error) {
-      alert(error.response?.data?.error || 'Failed to register user')
+      setFormError(error.response?.data?.error || 'Failed to register user')
+    } finally {
+      setFormLoading(false)
     }
   }
 
@@ -788,87 +798,102 @@ function UsersPage() {
       </div>
 
       {/* Add User Modal */}
-      {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-content p-6">
-            <h2 className="text-xl font-bold text-text-primary mb-6">Register New User</h2>
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ration Card Number</label>
-                  <input
-                    type="text"
-                    value={formData.rationCardNumber}
-                    onChange={(e) => setFormData({ ...formData, rationCardNumber: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">No. of Family Members</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={formData.members}
-                    onChange={(e) => setFormData({ ...formData, members: parseInt(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Card Type</label>
-                  <select
-                    value={formData.cardType}
-                    onChange={(e) => setFormData({ ...formData, cardType: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  >
-                    <option value="AAY">AAY (Antyodaya Anna Yojana)</option>
-                    <option value="PHH">PHH (Priority Household)</option>
-                    <option value="NPHH">NPHH (Non-Priority Household)</option>
-                    <option value="NPHH_S">NPHH-S (Sugar Card)</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex space-x-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-                >
-                  Register
-                </button>
-              </div>
-            </form>
+      <Modal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        title="Register New User"
+        showCloseButton={true}
+        closeOnOutsideClick={true}
+        closeOnEscape={true}
+      >
+        <form onSubmit={handleSubmit}>
+          {formError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+              {formError}
+            </div>
+          )}
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ration Card Number</label>
+              <input
+                type="text"
+                value={formData.rationCardNumber}
+                onChange={(e) => setFormData({ ...formData, rationCardNumber: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Family Members</label>
+              <input
+                type="number"
+                min="1"
+                max="10"
+                value={formData.members}
+                onChange={(e) => setFormData({ ...formData, members: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Card Type</label>
+              <select
+                value={formData.cardType}
+                onChange={(e) => setFormData({ ...formData, cardType: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required
+              >
+                <option value="PHH">PHH (Priority Household)</option>
+                <option value="AAY">AAY (Antyodaya)</option>
+                <option value="NPHH">NPHH (Non-Priority Household)</option>
+              </select>
+            </div>
           </div>
-        </div>
-      )}
+          <div className="flex space-x-3 mt-6">
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={formLoading}
+              className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {formLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Registering...
+                </>
+              ) : (
+                'Register User'
+              )}
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Collect Ration Modal */}
       {showCollectModal && selectedUser && (
@@ -1198,10 +1223,7 @@ function UsersPage() {
             {/* Footer Actions */}
             <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
               <button
-                onClick={() => {
-                  handleCollectClick(selectedUser)
-                  setShowPanel(false)
-                }}
+                onClick={() => handleCollectClick(selectedUser)}
                 disabled={selectedUser.collected}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all ${
                   selectedUser.collected

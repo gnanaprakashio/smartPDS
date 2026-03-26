@@ -2,6 +2,88 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { generateAndNotifyUsers } = require('./verificationService');
 
+// Reserve stock for a user when they are scheduled
+const reserveStockForUser = async (user, inventory) => {
+  const cardType = user.cardType || 'PHH';
+  const members = user.members || 1;
+  
+  const tnpdsAllocations = {
+    AAY:   { rice: 35, wheat: 5, sugar: 1.5, oil: 1, toorDal: 1 },
+    PHH:   { rice: 5,  wheat: 5, sugar: 0.5, oil: 1, toorDal: 1 },
+    NPHH:  { rice: 12, wheat: 5, sugar: 0.5, oil: 1, toorDal: 1 },
+    NPHH_S:{ rice: 0,  wheat: 0, sugar: 3.5, oil: 1, toorDal: 1 }
+  };
+  
+  const allocation = tnpdsAllocations[cardType] || tnpdsAllocations.PHH;
+  const riceNeeded = (cardType === 'PHH') ? (allocation.rice * members) : allocation.rice;
+  const wheatNeeded = allocation.wheat;
+  const sugarNeeded = allocation.sugar;
+  const oilNeeded = allocation.oil;
+  const toorDalNeeded = allocation.toorDal;
+  
+  // Update inventory with reserved stock
+  await prisma.inventory.update({
+    where: { id: inventory.id },
+    data: {
+      reservedRice: inventory.reservedRice + riceNeeded,
+      reservedWheat: inventory.reservedWheat + wheatNeeded,
+      reservedSugar: inventory.reservedSugar + sugarNeeded,
+      reservedOil: inventory.reservedOil + oilNeeded,
+      reservedToorDal: inventory.reservedToorDal + toorDalNeeded
+    }
+  });
+  
+  // Store reserved items on user record
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      reservedItems: {
+        rice: riceNeeded,
+        wheat: wheatNeeded,
+        sugar: sugarNeeded,
+        oil: oilNeeded,
+        toorDal: toorDalNeeded
+      }
+    }
+  });
+  
+  return { riceNeeded, wheatNeeded, sugarNeeded, oilNeeded, toorDalNeeded };
+};
+
+/**
+ * Release reserved stock when user is no longer scheduled (missed/rescheduled/pending)
+ */
+const releaseReservedStock = async (user, inventory) => {
+  if (!user.reservedItems) return;
+  
+  const reserved = user.reservedItems;
+  const riceRelease = reserved.rice || 0;
+  const wheatRelease = reserved.wheat || 0;
+  const sugarRelease = reserved.sugar || 0;
+  const oilRelease = reserved.oil || 0;
+  const toorDalRelease = reserved.toorDal || 0;
+  
+  // Update inventory - subtract from reserved stock
+  await prisma.inventory.update({
+    where: { id: inventory.id },
+    data: {
+      reservedRice: Math.max(0, inventory.reservedRice - riceRelease),
+      reservedWheat: Math.max(0, inventory.reservedWheat - wheatRelease),
+      reservedSugar: Math.max(0, inventory.reservedSugar - sugarRelease),
+      reservedOil: Math.max(0, inventory.reservedOil - oilRelease),
+      reservedToorDal: Math.max(0, inventory.reservedToorDal - toorDalRelease)
+    }
+  });
+  
+  // Clear reserved items on user record
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { reservedItems: null }
+  });
+  
+  return { riceRelease, wheatRelease, sugarRelease, oilRelease, toorDalRelease };
+};
+
 /**
  * Dynamic Stock-Based Scheduling Service
  * Automatically schedules users based on available stock
@@ -122,7 +204,12 @@ const autoSchedule = async (shopIdOverride = null, delayDays = null) => {
     console.log(`Stock needed for all ${allUsers.length} cards:`);
     console.log(`  Rice: ${totalRiceNeeded}kg, Wheat: ${totalWheatNeeded}kg, Sugar: ${totalSugarNeeded}kg, Oil: ${totalOilNeeded}L, ToorDal: ${totalToorDalNeeded}kg`);
     console.log(`Available stock:`);
-    console.log(`  Rice: ${inventory.riceStock}kg, Wheat: ${inventory.wheatStock}kg, Sugar: ${inventory.sugarStock}kg, Oil: ${inventory.oilStock}L, ToorDal: ${inventory.toorDalStock || 0}kg`);
+    const availableRice = inventory.riceStock;
+    const availableWheat = inventory.wheatStock;
+    const availableSugar = inventory.sugarStock;
+    const availableOil = inventory.oilStock;
+    const availableToorDal = inventory.toorDalStock || 0;
+    console.log(`  Rice: ${availableRice}kg, Wheat: ${availableWheat}kg, Sugar: ${availableSugar}kg, Oil: ${availableOil}L, ToorDal: ${availableToorDal}kg`);
 
     // ==========================================
     // STEP 2: Calculate max cards possible for EACH item
@@ -141,11 +228,11 @@ const autoSchedule = async (shopIdOverride = null, delayDays = null) => {
     const avgOilPerCard = OIL_PER_CARD;       // Fixed 1L per card
     const avgToorDalPerCard = TOORDAL_PER_CARD; // Fixed 1kg per card
 
-    const maxByRice = inventory.riceStock / avgRicePerCard;
-    const maxByWheat = inventory.wheatStock / avgWheatPerCard;
-    const maxBySugar = inventory.sugarStock / avgSugarPerCard;
-    const maxByOil = inventory.oilStock / avgOilPerCard;
-    const maxByToorDal = (inventory.toorDalStock || 0) / avgToorDalPerCard;
+    const maxByRice = availableRice / avgRicePerCard;
+    const maxByWheat = availableWheat / avgWheatPerCard;
+    const maxBySugar = availableSugar / avgSugarPerCard;
+    const maxByOil = availableOil / avgOilPerCard;
+    const maxByToorDal = availableToorDal / avgToorDalPerCard;
 
     console.log(`Card distribution: AAY=${aayCount}, PHH=${phhCount}, NPHH=${nphhCount}, NPHH_S=${nphhSCount}`);
     console.log(`Per card: Rice=${avgRicePerCard.toFixed(1)}kg (varies), Wheat=${avgWheatPerCard}kg, Sugar=${avgSugarPerCard.toFixed(1)}kg, Oil=${avgOilPerCard}L, ToorDal=${avgToorDalPerCard}kg`);
@@ -154,7 +241,27 @@ const autoSchedule = async (shopIdOverride = null, delayDays = null) => {
     // LIMITING FACTOR = lowest value determines max cards
     const maxCardsPossible = Math.floor(Math.min(maxByRice, maxByWheat, maxBySugar, maxByOil, maxByToorDal));
     
-    console.log(`Total stock can serve: ${maxCardsPossible} cards (limiting factor)`);
+    // Calculate ACTUAL available stock (excluding already reserved)
+    const actualAvailableRice = availableRice - (inventory.reservedRice || 0);
+    const actualAvailableWheat = availableWheat - (inventory.reservedWheat || 0);
+    const actualAvailableSugar = availableSugar - (inventory.reservedSugar || 0);
+    const actualAvailableOil = availableOil - (inventory.reservedOil || 0);
+    const actualAvailableToorDal = availableToorDal - (inventory.reservedToorDal || 0);
+    
+    const actualMaxByRice = actualAvailableRice / avgRicePerCard;
+    const actualMaxByWheat = actualAvailableWheat / avgWheatPerCard;
+    const actualMaxBySugar = actualAvailableSugar / avgSugarPerCard;
+    const actualMaxByOil = actualAvailableOil / avgOilPerCard;
+    const actualMaxByToorDal = actualAvailableToorDal / avgToorDalPerCard;
+    
+    const actualMaxCardsPossible = Math.floor(Math.min(actualMaxByRice, actualMaxByWheat, actualMaxBySugar, actualMaxByOil, actualMaxByToorDal));
+    
+    console.log(`Stock reserved: Rice=${inventory.reservedRice || 0}kg, Wheat=${inventory.reservedWheat || 0}kg, Sugar=${inventory.reservedSugar || 0}kg, Oil=${inventory.reservedOil || 0}L, ToorDal=${inventory.reservedToorDal || 0}kg`);
+    console.log(`Actual available: Rice=${actualAvailableRice}kg, Wheat=${actualAvailableWheat}kg, Sugar=${actualAvailableSugar}kg, Oil=${actualAvailableOil}L, ToorDal=${actualAvailableToorDal}kg`);
+    console.log(`Total stock can serve: ${maxCardsPossible} cards | Actual available for new scheduling: ${actualMaxCardsPossible} cards`);
+
+    // Use the actual available cards (accounting for existing reservations)
+    const effectiveMaxCards = actualMaxCardsPossible;
 
     if (maxCardsPossible === 0) {
       console.log('Insufficient stock for scheduling');
@@ -167,11 +274,7 @@ const autoSchedule = async (shopIdOverride = null, delayDays = null) => {
       return { success: false, reason: 'Stock below safety threshold' };
     }
 
-    // ==========================================
-    // CARD-BASED SELECTION (TNPDS Priority)
-    // ==========================================
-    // Selection based on CARD COUNT (limiting factor), not member count
-    
+    // Card-based selection logic (existing code)
     console.log(`Total cards to schedule: ${allUsers.length}`);
 
     // Priority order: AAY > PHH > NPHH > NPHH_S (TNPDS standards)
@@ -190,14 +293,29 @@ const autoSchedule = async (shopIdOverride = null, delayDays = null) => {
     });
 
     // Card-based selection: take top X cards based on limiting factor
-    const selectedCards = sortedUsers.slice(0, maxCardsPossible);
-    const pendingCards = sortedUsers.slice(maxCardsPossible);
+    const selectedCards = sortedUsers.slice(0, effectiveMaxCards);
+    const pendingCards = sortedUsers.slice(effectiveMaxCards);
 
     // Calculate total members in selected cards
     const totalAllocatedMembers = selectedCards.reduce((sum, u) => sum + (u.members || 1), 0);
 
     console.log(`Selected: ${selectedCards.length} cards (${totalAllocatedMembers} members)`);
     console.log(`Pending: ${pendingCards.length} cards`);
+    
+    // Reserve stock for selected users BEFORE creating transaction
+    console.log('Reserving stock for selected users...');
+    for (const user of selectedCards) {
+      await reserveStockForUser(user, inventory);
+    }
+    console.log(`Reserved stock for ${selectedCards.length} users`);
+    
+    // Release stock from pending users who were previously scheduled
+    console.log('Checking and releasing previously reserved stock for pending users...');
+    for (const pendingUser of pendingCards) {
+      if (pendingUser.reservedItems) {
+        await releaseReservedStock(pendingUser, inventory);
+      }
+    }
     
     // Log limiting factor for debugging
     const limits = { rice: maxByRice, wheat: maxByWheat, sugar: maxBySugar, oil: maxByOil, toorDal: maxByToorDal };
@@ -302,12 +420,12 @@ const autoSchedule = async (shopIdOverride = null, delayDays = null) => {
       );
     }
 
+    // Get the shopId from the first user (they should all have the same shopId)
+    const shopId = usersWithPriority[0]?.shopId;
+
     // Execute all updates
     await prisma.$transaction(updates);
 
-    // Get the shopId from the first user (they should all have the same shopId)
-    const shopId = usersWithPriority[0]?.shopId;
-    
     // Create slots for this shop with 2-hour slots, 15 cards per slot
     if (shopId) {
       const maxSlots = Math.ceil(usersWithPriority.length / maxCardsPerSlot);
@@ -401,21 +519,42 @@ const markMissedUsers = async (shopId = null) => {
       return { success: true, message: 'No missed users found', count: 0 };
     }
     
-    // Update status to MISSED
+    // Get inventory to release reserved stock
+    const inventory = shopId 
+      ? await prisma.inventory.findUnique({ where: { shopId } })
+      : await prisma.inventory.findFirst();
+    
+    if (!inventory) {
+      return { success: false, error: 'No inventory found' };
+    }
+    
+    // Release reserved stock for missed users
+    for (const user of missedUsers) {
+      if (user.reservedItems) {
+        await releaseReservedStock(user, inventory);
+      }
+    }
+    
     const updates = missedUsers.map(user =>
       prisma.user.update({
         where: { id: user.id },
-        data: { status: 'MISSED' }
+        data: { 
+          status: 'MISSED',
+          slotNumber: null,
+          timeSlot: null,
+          scheduleDate: null,
+          reservedItems: null
+        }
       })
     );
     
     await prisma.$transaction(updates);
     
-    console.log(`Marked ${missedUsers.length} users as MISSED`);
+    console.log(`Marked ${missedUsers.length} users as MISSED and released reserved stock`);
     
     return {
       success: true,
-      message: `Marked ${missedUsers.length} users as MISSED`,
+      message: `Marked ${missedUsers.length} users as MISSED and released reserved stock`,
       count: missedUsers.length,
       users: missedUsers.map(u => ({ id: u.id, name: u.name, rationCardNumber: u.rationCardNumber }))
     };
@@ -477,7 +616,22 @@ const rescheduleMissedUsers = async (shopId = null, delayDays = null) => {
     const maxByToorDal = (inventory.toorDalStock || 0) / TOORDAL_PER_CARD;
     
     // Card-based limit (not member-based)
-    const maxCardsPossible = Math.floor(Math.min(maxByRice, maxByWheat, maxBySugar, maxByOil, maxByToorDal));
+    // Calculate actual available stock (excluding already reserved)
+    const actualAvailableRice = inventory.riceStock - (inventory.reservedRice || 0);
+    const actualAvailableWheat = inventory.wheatStock - (inventory.reservedWheat || 0);
+    const actualAvailableSugar = inventory.sugarStock - (inventory.reservedSugar || 0);
+    const actualAvailableOil = inventory.oilStock - (inventory.reservedOil || 0);
+    const actualAvailableToorDal = (inventory.toorDalStock || 0) - (inventory.reservedToorDal || 0);
+    
+    const actualMaxByRice = actualAvailableRice / avgRicePerCard;
+    const actualMaxByWheat = actualAvailableWheat / WHEAT_PER_CARD;
+    const actualMaxBySugar = actualAvailableSugar / avgSugarPerCard;
+    const actualMaxByOil = actualAvailableOil / OIL_PER_CARD;
+    const actualMaxByToorDal = actualAvailableToorDal / TOORDAL_PER_CARD;
+    
+    const maxCardsPossible = Math.floor(Math.min(actualMaxByRice, actualMaxByWheat, actualMaxBySugar, actualMaxByOil, actualMaxByToorDal));
+    
+    console.log(`Rescheduling: Available stock can support ${maxCardsPossible} cards (accounting for already reserved stock)`);
     
     // Sort by priority (AAY > PHH > NPHH > NPHH_S)
     const priorityMap = { 'AAY': 1, 'PHH': 2, 'NPHH': 3, 'NPHH_S': 4 };
@@ -489,6 +643,17 @@ const rescheduleMissedUsers = async (shopId = null, delayDays = null) => {
     
     // Select top X cards based on limiting factor
     const toReschedule = sortedUsers.slice(0, maxCardsPossible);
+    
+    if (toReschedule.length === 0) {
+      return { success: false, error: 'Insufficient stock to reschedule any users' };
+    }
+    
+    // Reserve stock for rescheduled users
+    console.log('Reserving stock for rescheduled users...');
+    for (const user of toReschedule) {
+      await reserveStockForUser(user, inventory);
+    }
+    console.log(`Reserved stock for ${toReschedule.length} rescheduled users`);
     
     // Assign new slots with 2-hour slots, 15 cards per slot
     const maxCardsPerSlot = 15;
@@ -519,7 +684,9 @@ const rescheduleMissedUsers = async (shopId = null, delayDays = null) => {
           slotNumber,
           timeSlot,
           scheduleDate: newCollectionDate,
-          status: 'SCHEDULED'
+          status: 'SCHEDULED',
+          otp: null,  // Clear old OTP
+          otpExpiry: null
         }
       });
     });
