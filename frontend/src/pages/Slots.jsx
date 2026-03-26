@@ -99,7 +99,7 @@ function Slots() {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Slots</h1>
           <p className="text-slate-500 mt-1 text-sm">Manage distribution time slots</p>
         </div>
-        {userRole !== 'STAFF' && (
+        {userRole !== 'STAFF' && userRole !== 'OFFICER' && (
           <>
             <button
               onClick={() => {

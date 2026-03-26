@@ -362,8 +362,8 @@ function UsersPage() {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {/* Add User - Only for PDS Officer and Staff */}
-          {(userRole === 'PDS_OFFICER' || userRole === 'STAFF') && (
+          {/* Add User - Hidden for PDS Officer and Staff */}
+          {userRole === 'ADMIN' && (
             <button
               onClick={() => setShowModal(true)}
               className="btn-primary"

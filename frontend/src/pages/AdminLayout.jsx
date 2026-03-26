@@ -94,7 +94,7 @@ function AdminLayout({ onLogout, userRole }) {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-white tracking-tight">SPDS</h1>
-                <p className="text-xs text-slate-400">Smart Ration Distribution System</p>
+                <p className="text-xs text-slate-400">Smart Public Distribution System</p>
               </div>
             </div>
           </div>
