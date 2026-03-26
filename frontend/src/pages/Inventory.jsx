@@ -48,8 +48,21 @@ function Inventory() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setFormLoading(true)
+    
+    // Check if admin (PDS Officer) needs to select a shop
+    let finalShopId = formData.shopId
+    if (!finalShopId && userRole !== 'STAFF') {
+      const selectedShop = prompt('Enter the Shop ID to update inventory (e.g., SHOP001):')
+      if (!selectedShop) {
+        setFormLoading(false)
+        return // User cancelled
+      }
+      finalShopId = selectedShop.trim().toUpperCase()
+      setFormData(prev => ({ ...prev, shopId: finalShopId }))
+    }
+    
     try {
-      await inventoryAPI.updateInventory(formData)
+      await inventoryAPI.updateInventory({ ...formData, shopId: finalShopId })
       setShowModal(false)
       setEditingItem(null)
       setFormData({ shopId: '', riceStock: 0, sugarStock: 0, wheatStock: 0, oilStock: 0, toorDalStock: 0 })
@@ -77,7 +90,10 @@ function Inventory() {
 
   const handleAdd = () => {
     setEditingItem(null)
-    setFormData({ shopId: '', riceStock: 0, sugarStock: 0, wheatStock: 0, oilStock: 0, toorDalStock: 0 })
+    // For admin (PDS Officer), pre-fill with empty shopId (they'll be prompted)
+    // For staff, use their shopId
+    const staffShopId = userRole === 'STAFF' ? localStorage.getItem('shopId') : ''
+    setFormData({ shopId: staffShopId, riceStock: 0, sugarStock: 0, wheatStock: 0, oilStock: 0, toorDalStock: 0 })
     setShowModal(true)
   }
 
@@ -86,7 +102,15 @@ function Inventory() {
     if (!confirmed) return
     
     try {
-      const shopId = localStorage.getItem('shopId')
+      let shopId = localStorage.getItem('shopId')
+      
+      // If admin (PDS Officer) with no shopId, prompt them to select
+      if (!shopId || shopId === '') {
+        const selectedShop = prompt('Enter the Shop ID to reset inventory (e.g., SHOP001):')
+        if (!selectedShop) return // User cancelled
+        shopId = selectedShop.trim().toUpperCase()
+      }
+      
       await inventoryAPI.resetInventory(shopId)
       toast.success('Inventory reset to zero!')
       fetchInventory()

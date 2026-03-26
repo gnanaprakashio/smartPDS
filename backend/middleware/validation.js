@@ -14,7 +14,8 @@ const schemas = {
     sugarStock: Joi.number().min(0).optional(),
     wheatStock: Joi.number().min(0).optional(),
     oilStock: Joi.number().min(0).optional(),
-    toorDalStock: Joi.number().min(0).optional()
+    toorDalStock: Joi.number().min(0).optional(),
+    reschedule: Joi.boolean().optional()
   }),
 
   slotCreate: Joi.object({

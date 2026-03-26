@@ -10,7 +10,15 @@ router.post('/assign-ai', authMiddleware, assignSlotsAI);
 router.get('/today', authMiddleware, getTodaySchedule);
 router.get('/today-summary', authMiddleware, async (req, res) => {
   try {
-    const shopId = req.user.shopId || req.query.shopId;
+    // For PDS Officer, get shopId from query params (they can see all shops)
+    // For Staff, use their assigned shopId from JWT
+    let shopId = req.user.shopId;
+    
+    // If PDS Officer, allow them to filter by shop via query param
+    if (!shopId && req.query.shopId) {
+      shopId = req.query.shopId;
+    }
+    
     const summary = await scheduleService.getTodaySummary(shopId);
     res.json(summary);
   } catch (error) {

@@ -541,6 +541,78 @@ const markCollected = async (req, res) => {
   }
 };
 
+// Update user (edit/modify user data) - PDS Officer only
+const updateUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, cardType, members, status, reputationScore, shopId } = req.body;
+
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Build update data
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (phone) updateData.phone = phone;
+    if (cardType) updateData.cardType = cardType;
+    if (members) updateData.members = members;
+    if (status) updateData.status = status;
+    if (reputationScore !== undefined) updateData.reputationScore = reputationScore;
+    if (shopId) updateData.shopId = shopId;
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: updateData
+    });
+
+    res.json({
+      message: 'User updated successfully',
+      data: updatedUser
+    });
+  } catch (error) {
+    console.error('Error updating user:', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+};
+
+// Delete single user - PDS Officer only
+const deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user exists
+    const existingUser = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await prisma.user.delete({
+      where: { id }
+    });
+
+    res.json({
+      message: 'User deleted successfully',
+      deletedUser: {
+        id: existingUser.id,
+        name: existingUser.name,
+        rationCardNumber: existingUser.rationCardNumber
+      }
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+};
+
 module.exports = {
   registerUser,
   getAllUsers,
@@ -551,6 +623,8 @@ module.exports = {
   uploadUsersCSV,
   upload,
   markCollected,
-  searchUsers
+  searchUsers,
+  updateUser,
+  deleteUser
 };
 

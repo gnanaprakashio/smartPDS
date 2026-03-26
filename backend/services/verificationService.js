@@ -1,15 +1,58 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Initialize Twilio client for SMS
+let twilioClient = null;
+let twilioEnabled = false;
+
+try {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const phoneNumber = process.env.TWILIO_PHONE_NUMBER;
+  
+  // Check if Twilio credentials are properly configured
+  if (accountSid && authToken && phoneNumber && accountSid.startsWith('AC')) {
+    const twilio = require('twilio');
+    twilioClient = twilio(accountSid, authToken);
+    twilioEnabled = true;
+    console.log('✅ Twilio SMS service initialized for verificationService');
+  } else {
+    console.warn('⚠️  Twilio credentials not configured for verificationService. SMS will be logged to console only.');
+  }
+} catch (error) {
+  console.error('❌ Failed to initialize Twilio in verificationService:', error.message);
+}
+
 /**
- * Generate a 4-digit OTP
+ * Format phone number to international format
  */
-const generateOTP = () => {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+const formatPhoneNumber = (phone) => {
+  let cleaned = phone.replace(/[\s\-\(\)]/g, '');
+  
+  if (cleaned.startsWith('+')) {
+    return cleaned;
+  }
+  
+  if (cleaned.startsWith('91') && cleaned.length === 12) {
+    return '+' + cleaned;
+  }
+  
+  if (cleaned.length === 10) {
+    return '+91' + cleaned;
+  }
+  
+  return cleaned;
 };
 
 /**
- * Send notification via SMS only - simulated on console
+ * Generate a 6-digit OTP
+ */
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
+
+/**
+ * Send notification via SMS - sends real SMS via Twilio
  */
 const sendNotification = async (user, otp) => {
   const date = user.scheduleDate 
@@ -26,13 +69,45 @@ const sendNotification = async (user, otp) => {
   // Combined bilingual message
   const message = `${englishMessage}\n\n${tamilMessage}`;
 
-  // Simulate SMS notification on console
-  console.log(`\n📱 [SMS NOTIFICATION SENT] to ${user.phone}`);
-  console.log(`   English: ${englishMessage}`);
-  console.log(`   Tamil: ${tamilMessage}`);
-  console.log(`   OTP: ${otp}\n`);
+  // Format phone number
+  const formattedPhone = formatPhoneNumber(user.phone);
 
-  return { success: true, simulated: true, method: 'sms', message, englishMessage, tamilMessage };
+  // Try to send SMS via Twilio if enabled
+  if (twilioEnabled && twilioClient) {
+    try {
+      const twilioMessage = await twilioClient.messages.create({
+        body: message,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: formattedPhone
+      });
+      
+      console.log(`\n✅ [SMS SENT VIA TWILIO] to ${formattedPhone}`);
+      console.log(`   English: ${englishMessage}`);
+      console.log(`   Tamil: ${tamilMessage}`);
+      console.log(`   OTP: ${otp}`);
+      console.log(`   Message SID: ${twilioMessage.sid}\n`);
+
+      return { success: true, simulated: false, method: 'sms', messageSid: twilioMessage.sid, message, englishMessage, tamilMessage };
+    } catch (twilioError) {
+      console.error('❌ Twilio SMS Error in verificationService:', twilioError.message);
+      
+      // Fallback to console
+      console.log(`\n📱 [SMS FALLBACK - LOGGED TO CONSOLE] to ${user.phone}`);
+      console.log(`   English: ${englishMessage}`);
+      console.log(`   Tamil: ${tamilMessage}`);
+      console.log(`   OTP: ${otp}\n`);
+
+      return { success: true, simulated: true, method: 'console', warning: 'SMS delivery failed', message, englishMessage, tamilMessage };
+    }
+  } else {
+    // Twilio not configured - log to console only
+    console.log(`\n📱 [SMS NOTIFICATION - CONSOLE ONLY] to ${user.phone}`);
+    console.log(`   English: ${englishMessage}`);
+    console.log(`   Tamil: ${tamilMessage}`);
+    console.log(`   OTP: ${otp}\n`);
+
+    return { success: true, simulated: true, method: 'console', message, englishMessage, tamilMessage };
+  }
 };
 
 /**
@@ -249,5 +324,6 @@ module.exports = {
   sendNotification,
   sendNotificationByChannel,
   generateAndNotifyUsers,
-  verifyOTP
+  verifyOTP,
+  twilioEnabled
 };

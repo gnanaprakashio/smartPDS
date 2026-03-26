@@ -1,9 +1,10 @@
 const inventoryService = require('../services/inventoryService');
 const scheduleService = require('../services/scheduleService');
+const verificationService = require('../services/verificationService');
 
 const updateInventory = async (req, res) => {
   try {
-    const { shopId } = req.body;
+    const { shopId, reschedule } = req.body;
     const updateData = {
       riceStock: req.body.riceStock,
       sugarStock: req.body.sugarStock,
@@ -14,9 +15,28 @@ const updateInventory = async (req, res) => {
 
     const inventory = await inventoryService.updateInventory(shopId, updateData);
 
+    // If reschedule is true, trigger rescheduling and OTP sending
+    let scheduleResult = null;
+    if (reschedule) {
+      try {
+        scheduleResult = await scheduleService.autoSchedule(shopId);
+        
+        // If scheduling succeeded and there are users scheduled, send OTPs
+        if (scheduleResult && scheduleResult.success && scheduleResult.scheduledCount > 0) {
+          const otpResult = await verificationService.generateAndNotifyUsers();
+          scheduleResult.otpNotification = otpResult;
+        }
+      } catch (scheduleError) {
+        console.error('Error during rescheduling:', scheduleError);
+        scheduleResult = { success: false, error: scheduleError.message };
+      }
+    }
+
     res.json({
       message: 'Inventory updated successfully',
-      data: inventory
+      data: inventory,
+      rescheduled: reschedule || false,
+      scheduleResult
     });
   } catch (error) {
     console.error(error);
@@ -69,15 +89,16 @@ const resetInventory = async (req, res) => {
     const { PrismaClient } = require('@prisma/client');
     const prisma = new PrismaClient();
     
-    const shopId = req.body.shopId || req.user.shopId;
+    const { shopId, reschedule } = req.body;
+    const targetShopId = shopId || req.user.shopId;
     
-    if (!shopId) {
+    if (!targetShopId) {
       return res.status(400).json({ error: 'Shop ID is required' });
     }
     
     // Reset inventory to zero
     const inventory = await prisma.inventory.upsert({
-      where: { shopId },
+      where: { shopId: targetShopId },
       update: {
         riceStock: 0,
         wheatStock: 0,
@@ -86,7 +107,7 @@ const resetInventory = async (req, res) => {
         toorDalStock: 0
       },
       create: {
-        shopId,
+        shopId: targetShopId,
         riceStock: 0,
         wheatStock: 0,
         sugarStock: 0,
@@ -94,10 +115,29 @@ const resetInventory = async (req, res) => {
         toorDalStock: 0
       }
     });
+
+    // If reschedule is true, trigger rescheduling and OTP sending
+    let scheduleResult = null;
+    if (reschedule) {
+      try {
+        scheduleResult = await scheduleService.autoSchedule(targetShopId);
+        
+        // If scheduling succeeded and there are users scheduled, send OTPs
+        if (scheduleResult && scheduleResult.success && scheduleResult.scheduledCount > 0) {
+          const otpResult = await verificationService.generateAndNotifyUsers();
+          scheduleResult.otpNotification = otpResult;
+        }
+      } catch (scheduleError) {
+        console.error('Error during rescheduling:', scheduleError);
+        scheduleResult = { success: false, error: scheduleError.message };
+      }
+    }
     
     res.json({
       message: 'Inventory reset to zero successfully',
-      data: inventory
+      data: inventory,
+      rescheduled: reschedule || false,
+      scheduleResult
     });
   } catch (error) {
     console.error('Error resetting inventory:', error);

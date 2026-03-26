@@ -250,6 +250,12 @@ function UsersPage() {
 
   // Handle opening collect modal - shows OTP and stock before confirming
   const handleCollectClick = (user) => {
+    // Only staff can collect ration
+    if (userRole !== 'STAFF') {
+      alert('Only staff members can collect ration. Please contact your shop staff.')
+      return
+    }
+    
     setSelectedUser(user)
     setEnteredOtp('')
     setOtpError('')
@@ -926,8 +932,8 @@ function UsersPage() {
                     setEnteredOtp(e.target.value)
                     setOtpError('')
                   }}
-                  placeholder="Enter 4-digit OTP"
-                  maxLength={4}
+                  placeholder="Enter 6-digit OTP"
+                  maxLength={6}
                   className={`w-full px-4 py-3 text-center text-xl font-mono tracking-widest border-2 rounded-lg focus:outline-none focus:ring-2 ${
                     otpError 
                       ? 'border-red-300 focus:ring-red-200 bg-red-50' 
@@ -1144,7 +1150,11 @@ function UsersPage() {
                   <Calendar size={16} className="text-indigo-600" />
                   Schedule Details
                 </h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-white p-3 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1">Date</p>
+                    <p className="font-medium text-gray-900">{selectedUser.scheduleDate ? new Date(selectedUser.scheduleDate).toLocaleDateString('en-IN') : '-'}</p>
+                  </div>
                   <div className="bg-white p-3 rounded-lg">
                     <p className="text-xs text-gray-500 mb-1">Slot Number</p>
                     <p className="font-medium text-gray-900">{selectedUser.slotNumber || '-'}</p>

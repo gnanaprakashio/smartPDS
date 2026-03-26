@@ -53,6 +53,15 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password, shopId } = req.body;
+    
+    // Log incoming request for debugging
+    console.log('Login attempt:', { email, hasPassword: !!password, shopId });
+
+    // Validate required fields
+    if (!email || !password) {
+      console.log('Missing credentials');
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
 
     // Demo credentials for testing
     if (email === 'admin@pds.gov.in' && password === 'admin123') {

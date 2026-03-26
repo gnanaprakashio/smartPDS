@@ -1,7 +1,7 @@
 const express = require('express');
-const { registerUser, getAllUsers, getUserById, getCardCounts, getAllShops, deleteAllUsers, uploadUsersCSV, upload, markCollected, searchUsers } = require('../controllers/userController');
+const { registerUser, getAllUsers, getUserById, getCardCounts, getAllShops, deleteAllUsers, uploadUsersCSV, upload, markCollected, searchUsers, updateUser, deleteUser } = require('../controllers/userController');
 const { validate, schemas } = require('../middleware/validation');
-const { authMiddleware, staffMiddleware } = require('../middleware/auth');
+const { authMiddleware, staffMiddleware, pdsOfficerMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -21,7 +21,13 @@ router.get('/shops', authMiddleware, getAllShops);
 router.get('/counts', authMiddleware, getCardCounts);
 
 // Delete all users (PDS Officer only)
-router.delete('/all', authMiddleware, deleteAllUsers);
+router.delete('/all', authMiddleware, pdsOfficerMiddleware, deleteAllUsers);
+
+// Update user (edit/modify user data) - PDS Officer only
+router.put('/:id', authMiddleware, pdsOfficerMiddleware, updateUser);
+
+// Delete single user (remove user data) - PDS Officer only
+router.delete('/:id', authMiddleware, pdsOfficerMiddleware, deleteUser);
 
 // Get user by ID
 router.get('/:id', authMiddleware, getUserById);

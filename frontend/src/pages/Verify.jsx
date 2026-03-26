@@ -63,15 +63,15 @@ function Verify() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              OTP (4-digit)
+              OTP (6-digit)
             </label>
             <input
               type="text"
               value={formData.otp}
               onChange={(e) => setFormData({ ...formData, otp: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="Enter 4-digit OTP"
-              maxLength={4}
+              placeholder="Enter 6-digit OTP"
+              maxLength={6}
               required
             />
           </div>

@@ -220,7 +220,7 @@ const generateSchedule = async (req, res) => {
     for (const user of usersWithPriority) {
       try {
         // Generate OTP
-        const otp = Math.floor(1000 + Math.random() * 9000).toString();
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
         // Update user with OTP

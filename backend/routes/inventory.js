@@ -11,8 +11,8 @@ router.post('/update', authMiddleware, pdsOfficerMiddleware, validate(schemas.in
 // Get inventory - both can view
 router.get('/', authMiddleware, getInventory);
 
-// Reset inventory to zero
-router.post('/reset', authMiddleware, resetInventory);
+// Reset inventory to zero (PDS Officer only)
+router.post('/reset', authMiddleware, pdsOfficerMiddleware, resetInventory);
 
 module.exports = router;
 
